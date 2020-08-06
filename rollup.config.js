@@ -1,5 +1,6 @@
 import fs from 'fs';
-import babel from 'rollup-plugin-babel';
+import babel from '@rollup/plugin-babel';
+
 import { uglify } from 'rollup-plugin-uglify';
 import fileSize from 'rollup-plugin-filesize';
 import license from 'rollup-plugin-license';

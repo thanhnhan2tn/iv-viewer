@@ -95,8 +95,8 @@ class ImageViewer {
 
     let container = element;
 
-    if (domElement.tagName === 'IMG') {
-      imageSrc = domElement.src;
+    if (['IMG', 'CANVAS'].indexOf(domElement.tagName) >= 0) {
+      imageSrc = domElement.tagName === 'IMG' ? domElement.src : domElement.toDataURL();
       hiResImageSrc = domElement.getAttribute('high-res-src') || domElement.getAttribute('data-high-res-src');
 
       // wrap the image with iv-container div
@@ -215,7 +215,9 @@ class ImageViewer {
         const { snapSlider } = this._sliders;
         const imageCurrentDim = this._getImageCurrentDim();
         currentPos = position;
-
+        if (this._state.zoomValue <= 110) {
+          return;
+        }
         snapSlider.onMove(e, {
           dx: -position.dx * snapImageDim.w / imageCurrentDim.w,
           dy: -position.dy * snapImageDim.h / imageCurrentDim.h,
@@ -289,6 +291,7 @@ class ImageViewer {
       onMove: (e, position) => {
         const { snapHandleDim, snapImageDim } = this._state;
         const { image } = this._elements;
+
 
         const imageCurrentDim = this._getImageCurrentDim();
 
@@ -374,18 +377,18 @@ class ImageViewer {
     const { imageWrap, snapView } = this._elements;
 
     // show snapView on mouse move
-    this._events.snapViewOnMouseMove = assignEvent(imageWrap, ['touchmove', 'mousemove'], () => {
+    this._events.snapViewOnMouseMove = assignEvent(imageWrap, ['touchmove.zoom', 'mousemove'], () => {
       this.showSnapView();
     });
 
     // keep showing snapView if on hover over it without any timeout
-    this._events.mouseEnterSnapView = assignEvent(snapView, ['mouseenter', 'touchstart'], () => {
+    this._events.mouseEnterSnapView = assignEvent(snapView, ['mouseenter.zoom', 'touchstart'], () => {
       this._state.snapViewVisible = false;
       this.showSnapView(true);
     });
 
     // on mouse leave set timeout to hide snapView
-    this._events.mouseLeaveSnapView = assignEvent(snapView, ['mouseleave', 'touchend'], () => {
+    this._events.mouseLeaveSnapView = assignEvent(snapView, ['mouseleave.zoom', 'touchend'], () => {
       this._state.snapViewVisible = false;
       this.showSnapView();
     });
@@ -447,11 +450,11 @@ class ImageViewer {
       if (events.pinchEnd) events.pinchEnd();
 
       // assign events
-      events.pinchMove = assignEvent(document, 'touchmove', moveListener);
-      events.pinchEnd = assignEvent(document, 'touchend', endListener);
+      events.pinchMove = assignEvent(document, 'touchmove.zoom', moveListener);
+      events.pinchEnd = assignEvent(document, 'touchend.zoom', endListener);
     };
 
-    this._events.pinchStart = assignEvent(imageWrap, 'touchstart', onPinchStart);
+    this._events.pinchStart = assignEvent(imageWrap, 'touchstart.zoom', onPinchStart);
   }
 
   _scrollZoom () {
@@ -498,7 +501,7 @@ class ImageViewer {
       this.showSnapView();
     };
 
-    this._ev = assignEvent(imageWrap, 'wheel', onMouseWheel);
+    this._ev = assignEvent(imageWrap, 'wheel.zoom', onMouseWheel);
   }
 
   _doubleTapToZoom () {
@@ -527,8 +530,8 @@ class ImageViewer {
         touchTime = 0;
       }
     };
-
-    assignEvent(imageWrap, 'click', onDoubleTap);
+    assignEvent(imageWrap, 'touch.zoom', onDoubleTap);
+    assignEvent(imageWrap, 'click.zoom', onDoubleTap);
   }
 
   _getImageCurrentDim () {
@@ -768,11 +771,18 @@ class ImageViewer {
       }
 
       css(image, {
+        opacity: 1,
         height: `${imgHeight}px`,
         width: `${imgWidth}px`,
         left: `${newLeft}px`,
         top: `${newTop}px`,
       });
+
+      if (tickZoom <= 110) {
+        css(image, {
+          opacity: 0,
+        });
+      }
 
       this._state.zoomValue = tickZoom;
 

@@ -1,7 +1,7 @@
 /**
  * iv-viewer - 2.0.1
  * Author : Sudhanshu Yadav
- * Copyright (c)  2019 to Sudhanshu Yadav, released under the MIT license.
+ * Copyright (c) 2019, 2020 to Sudhanshu Yadav, released under the MIT license.
  * git+https://github.com/s-yadav/iv-viewer.git
  */
 
@@ -299,13 +299,16 @@ function clamp(num, min, max) {
   return Math.min(Math.max(num, min), max);
 }
 function assignEvent(element, events, handler) {
+  var functionMap = {};
   if (typeof events === 'string') events = [events];
   events.forEach(function (event) {
-    element.addEventListener(event, handler);
+    functionMap[event] = handler;
+    element.addEventListener(event.split('.')[0], functionMap[event]);
   });
   return function () {
     events.forEach(function (event) {
-      element.removeEventListener(event, handler);
+      element.removeEventListener(event.split('.')[0], functionMap[event]);
+      delete functionMap[event];
     });
   };
 }
@@ -337,7 +340,7 @@ function () {
       var moveHandler = _this.moveHandler,
           endHandler = _this.endHandler,
           onStart = _this.onStart;
-      var isTouchEvent = eStart.type === 'touchstart';
+      var isTouchEvent = eStart.type === 'touchstart' || eStart.type === 'touchend';
       _this.touchMoveEvent = isTouchEvent ? 'touchmove' : 'mousemove';
       _this.touchEndEvent = isTouchEvent ? 'touchend' : 'mouseup';
       _this.sx = isTouchEvent ? eStart.touches[0].clientX : eStart.clientX;
@@ -491,11 +494,19 @@ function () {
         }
 
         css(image, {
+          opacity: 1,
           height: "".concat(imgHeight, "px"),
           width: "".concat(imgWidth, "px"),
           left: "".concat(newLeft, "px"),
           top: "".concat(newTop, "px")
         });
+
+        if (tickZoom <= 110) {
+          css(image, {
+            opacity: 0
+          });
+        }
+
         _this._state.zoomValue = tickZoom;
 
         _this._resizeSnapHandle(imgWidth, imgHeight, newLeft, newTop); // update zoom handle position
@@ -594,7 +605,7 @@ function () {
       container: container,
       domElement: domElement
     };
-    this._options = _objectSpread({}, ImageViewer.defaults, options); // container for all events
+    this._options = _objectSpread(_objectSpread({}, ImageViewer.defaults), options); // container for all events
 
     this._events = {}; // container for all timeout and frames
 
@@ -637,8 +648,8 @@ function () {
 
       var container = element;
 
-      if (domElement.tagName === 'IMG') {
-        imageSrc = domElement.src;
+      if (['IMG', 'CANVAS'].indexOf(domElement.tagName) >= 0) {
+        imageSrc = domElement.tagName === 'IMG' ? domElement.src : domElement.toDataURL();
         hiResImageSrc = domElement.getAttribute('high-res-src') || domElement.getAttribute('data-high-res-src'); // wrap the image with iv-container div
 
         container = wrap(domElement, {
@@ -712,7 +723,7 @@ function () {
       } // save references for later use
 
 
-      this._elements = _objectSpread({}, this._elements, {
+      this._elements = _objectSpread(_objectSpread({}, this._elements), {}, {
         snapView: container.querySelector('.iv-snap-view'),
         snapImageWrap: container.querySelector('.iv-snap-image-wrap'),
         imageWrap: container.querySelector('.iv-image-wrap'),
@@ -763,6 +774,11 @@ function () {
           var imageCurrentDim = _this2._getImageCurrentDim();
 
           currentPos = position;
+
+          if (_this2._state.zoomValue <= 110) {
+            return;
+          }
+
           snapSlider.onMove(e, {
             dx: -position.dx * snapImageDim.w / imageCurrentDim.w,
             dy: -position.dy * snapImageDim.h / imageCurrentDim.h
@@ -912,17 +928,17 @@ function () {
           imageWrap = _this$_elements2.imageWrap,
           snapView = _this$_elements2.snapView; // show snapView on mouse move
 
-      this._events.snapViewOnMouseMove = assignEvent(imageWrap, ['touchmove', 'mousemove'], function () {
+      this._events.snapViewOnMouseMove = assignEvent(imageWrap, ['touchmove.zoom', 'mousemove'], function () {
         _this5.showSnapView();
       }); // keep showing snapView if on hover over it without any timeout
 
-      this._events.mouseEnterSnapView = assignEvent(snapView, ['mouseenter', 'touchstart'], function () {
+      this._events.mouseEnterSnapView = assignEvent(snapView, ['mouseenter.zoom', 'touchstart'], function () {
         _this5._state.snapViewVisible = false;
 
         _this5.showSnapView(true);
       }); // on mouse leave set timeout to hide snapView
 
-      this._events.mouseLeaveSnapView = assignEvent(snapView, ['mouseleave', 'touchend'], function () {
+      this._events.mouseLeaveSnapView = assignEvent(snapView, ['mouseleave.zoom', 'touchend'], function () {
         _this5._state.snapViewVisible = false;
 
         _this5.showSnapView();
@@ -968,22 +984,26 @@ function () {
           _this6.zoom(zoomValue, center);
         };
 
-        var endListener = function endListener() {
+        var endListener = function endListener(eEnd) {
           // unbind events
           events.pinchMove();
           events.pinchEnd();
-          _this6._state.zooming = false;
+          _this6._state.zooming = false; // properly resume move event if one finger remains
+
+          if (eEnd.touches.length === 1) {
+            _this6._sliders.imageSlider.startHandler(eEnd);
+          }
         }; // remove events if already assigned
 
 
         if (events.pinchMove) events.pinchMove();
         if (events.pinchEnd) events.pinchEnd(); // assign events
 
-        events.pinchMove = assignEvent(document, 'touchmove', moveListener);
-        events.pinchEnd = assignEvent(document, 'touchend', endListener);
+        events.pinchMove = assignEvent(document, 'touchmove.zoom', moveListener);
+        events.pinchEnd = assignEvent(document, 'touchend.zoom', endListener);
       };
 
-      this._events.pinchStart = assignEvent(imageWrap, 'touchstart', onPinchStart);
+      this._events.pinchStart = assignEvent(imageWrap, 'touchstart.zoom', onPinchStart);
     }
   }, {
     key: "_scrollZoom",
@@ -1030,7 +1050,7 @@ function () {
         _this7.showSnapView();
       };
 
-      this._ev = assignEvent(imageWrap, 'wheel', onMouseWheel);
+      this._ev = assignEvent(imageWrap, 'wheel.zoom', onMouseWheel);
     }
   }, {
     key: "_doubleTapToZoom",
@@ -1062,7 +1082,8 @@ function () {
         }
       };
 
-      assignEvent(imageWrap, 'click', onDoubleTap);
+      assignEvent(imageWrap, 'touch.zoom', onDoubleTap);
+      assignEvent(imageWrap, 'click.zoom', onDoubleTap);
     }
   }, {
     key: "_getImageCurrentDim",
@@ -1309,12 +1330,43 @@ ImageViewer.defaults = {
   zoomOnMouseWheel: true
 };
 
+function _createSuper2(Derived) {
+  function isNativeReflectConstruct() {
+    if (typeof Reflect === "undefined" || !Reflect.construct) return false;
+    if (Reflect.construct.sham) return false;
+    if (typeof Proxy === "function") return true;
+
+    try {
+      Date.prototype.toString.call(Reflect.construct(Date, [], function () {}));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  return function () {
+    var Super = _getPrototypeOf(Derived),
+        result;
+
+    if (isNativeReflectConstruct()) {
+      var NewTarget = _getPrototypeOf(this).constructor;
+
+      result = Reflect.construct(Super, arguments, NewTarget);
+    } else {
+      result = Super.apply(this, arguments);
+    }
+
+    return _possibleConstructorReturn(this, result);
+  };
+}
 var fullScreenHtml = "\n  <div class=\"iv-fullscreen-container\"></div>\n  <div class=\"iv-fullscreen-close\"></div>\n";
 
 var FullScreenViewer =
 /*#__PURE__*/
 function (_ImageViewer) {
   _inherits(FullScreenViewer, _ImageViewer);
+
+  var _super = _createSuper2(FullScreenViewer);
 
   function FullScreenViewer() {
     var _this;
@@ -1331,9 +1383,9 @@ function (_ImageViewer) {
     });
     var container = fullScreenElem.querySelector('.iv-fullscreen-container'); // call the ImageViewer constructor
 
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(FullScreenViewer).call(this, container, _objectSpread({}, options, {
+    _this = _super.call(this, container, _objectSpread(_objectSpread({}, options), {}, {
       refreshOnResize: false
-    }))); // add fullScreenElem on element list
+    })); // add fullScreenElem on element list
 
     _defineProperty(_assertThisInitialized(_this), "hide", function () {
       // hide the fullscreen
