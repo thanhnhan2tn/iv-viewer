@@ -1,11 +1,11 @@
 {
-  "name": "iv-viewer",
-  "version": "2.0.1",
+  "name": "iv-viewer-canvas",
+  "version": "2.0.2",
   "description": "A zooming and panning plugin inspired by google photos for your web images.",
   "main": "lib/index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/s-yadav/iv-viewer.git"
+    "url": "git+https://github.com/thanhnhan2tn/iv-viewer.git"
   },
   "keywords": [
     "image",
@@ -53,5 +53,9 @@
     "rollup-plugin-uglify": "^6.0.2",
     "sass": "^1.17.0"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "directories": {
+    "example": "example",
+    "lib": "lib"
+  }
 }
