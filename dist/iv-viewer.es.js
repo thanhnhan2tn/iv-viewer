@@ -275,7 +275,11 @@ function wrap(element, _ref) {
   var wrapper = document.createElement(tag);
   if (className) wrapper.className = className;
   if (id) wrapper.id = id;
-  if (style) wrapper.style = style;
+
+  if (style) {
+    css(wrapper, style);
+  }
+
   element.parentNode.insertBefore(wrapper, element);
   element.parentNode.removeChild(element);
   wrapper.appendChild(element);
@@ -450,7 +454,8 @@ function () {
           zoomSliderLength = _state.zoomSliderLength;
       var image = _elements.image,
           zoomHandle = _elements.zoomHandle;
-      var maxZoom = _options.maxZoom;
+      var maxZoom = _options.maxZoom,
+          hideBeforeZoom = _options.hideBeforeZoom;
       perc = Math.round(Math.max(100, perc));
       perc = Math.min(maxZoom, perc);
       point = point || {
@@ -501,7 +506,7 @@ function () {
           top: "".concat(newTop, "px")
         });
 
-        if (tickZoom <= 110) {
+        if (tickZoom <= 110 && hideBeforeZoom) {
           css(image, {
             opacity: 0
           });
@@ -649,7 +654,7 @@ function () {
       var container = element;
 
       if (['IMG', 'CANVAS'].indexOf(domElement.tagName) >= 0) {
-        imageSrc = domElement.tagName === 'IMG' ? domElement.src : domElement.toDataURL();
+        imageSrc = domElement.src || domElement.getAttribute('src') || domElement.getAttribute('data-src') || domElement.toDataURL();
         hiResImageSrc = domElement.getAttribute('high-res-src') || domElement.getAttribute('data-high-res-src'); // wrap the image with iv-container div
 
         container = wrap(domElement, {

@@ -34,7 +34,7 @@ const imageViewHtml = `
 `;
 
 class ImageViewer {
-  constructor (element, options = {}) {
+  constructor(element, options = {}) {
     const { container, domElement, imageSrc, hiResImageSrc } = this._findContainerAndImageSrc(element, options);
 
     // containers for elements
@@ -80,7 +80,7 @@ class ImageViewer {
     domElement._imageViewer = this;
   }
 
-  _findContainerAndImageSrc (element) {
+  _findContainerAndImageSrc(element) {
     let domElement = element;
     let imageSrc, hiResImageSrc;
 
@@ -96,7 +96,10 @@ class ImageViewer {
     let container = element;
 
     if (['IMG', 'CANVAS'].indexOf(domElement.tagName) >= 0) {
-      imageSrc = domElement.tagName === 'IMG' ? domElement.src : domElement.toDataURL();
+      imageSrc = domElement.src ||
+        domElement.getAttribute('src') ||
+        domElement.getAttribute('data-src') ||
+        domElement.toDataURL();
       hiResImageSrc = domElement.getAttribute('high-res-src') || domElement.getAttribute('data-high-res-src');
 
       // wrap the image with iv-container div
@@ -121,7 +124,7 @@ class ImageViewer {
     };
   }
 
-  _init () {
+  _init() {
     // initialize the dom elements
     this._initDom();
 
@@ -143,7 +146,7 @@ class ImageViewer {
     this._initEvents();
   }
 
-  _initDom () {
+  _initDom() {
     const { container } = this._elements;
 
     // add image-viewer layout elements
@@ -173,7 +176,7 @@ class ImageViewer {
     };
   }
 
-  _initImageSlider () {
+  _initImageSlider() {
     const {
       _elements,
     } = this;
@@ -267,7 +270,7 @@ class ImageViewer {
     this._sliders.imageSlider = imageSlider;
   }
 
-  _initSnapSlider () {
+  _initSnapSlider() {
     const {
       snapHandle,
     } = this._elements;
@@ -324,7 +327,7 @@ class ImageViewer {
     this._sliders.snapSlider = snapSlider;
   }
 
-  _initZoomSlider () {
+  _initZoomSlider() {
     const { snapView, zoomHandle } = this._elements;
 
     // zoom in zoom out using zoom handle
@@ -364,7 +367,7 @@ class ImageViewer {
     this._sliders.zoomSlider = zoomSlider;
   }
 
-  _initEvents () {
+  _initEvents() {
     this._snapViewEvents();
 
     // handle window resize
@@ -373,7 +376,7 @@ class ImageViewer {
     }
   }
 
-  _snapViewEvents () {
+  _snapViewEvents() {
     const { imageWrap, snapView } = this._elements;
 
     // show snapView on mouse move
@@ -394,7 +397,7 @@ class ImageViewer {
     });
   }
 
-  _pinchAndZoom () {
+  _pinchAndZoom() {
     const { imageWrap, container } = this._elements;
 
     // apply pinch and zoom feature
@@ -457,7 +460,7 @@ class ImageViewer {
     this._events.pinchStart = assignEvent(imageWrap, 'touchstart.zoom', onPinchStart);
   }
 
-  _scrollZoom () {
+  _scrollZoom() {
     /* Add zoom interaction in mouse wheel */
     const { _options } = this;
     const { container, imageWrap } = this._elements;
@@ -504,7 +507,7 @@ class ImageViewer {
     this._ev = assignEvent(imageWrap, 'wheel.zoom', onMouseWheel);
   }
 
-  _doubleTapToZoom () {
+  _doubleTapToZoom() {
     const { imageWrap } = this._elements;
     // handle double tap for zoom in and zoom out
 
@@ -534,7 +537,7 @@ class ImageViewer {
     assignEvent(imageWrap, 'click.zoom', onDoubleTap);
   }
 
-  _getImageCurrentDim () {
+  _getImageCurrentDim() {
     const { zoomValue, imageDim } = this._state;
     return {
       w: imageDim.w * (zoomValue / 100),
@@ -542,7 +545,7 @@ class ImageViewer {
     };
   }
 
-  _loadImages () {
+  _loadImages() {
     const { _images, _elements } = this;
     const { imageSrc, hiResImageSrc } = _images;
     const { container, snapImageWrap, imageWrap } = _elements;
@@ -611,7 +614,7 @@ class ImageViewer {
       this._events.imageLoad = assignEvent(image, 'load', onImageLoad);
     }
   }
-  _loadHighResImage (hiResImageSrc) {
+  _loadHighResImage(hiResImageSrc) {
     const { imageWrap, container } = this._elements;
 
     const lowResImg = this._elements.image;
@@ -642,7 +645,7 @@ class ImageViewer {
       this._events.hiResImageLoad = assignEvent(hiResImage, 'load', onHighResImageLoad);
     }
   }
-  _calculateDimensions () {
+  _calculateDimensions() {
     const { image, container, snapView, snapImage, zoomHandle } = this._elements;
 
     // calculate content width of image and snap image
@@ -705,7 +708,7 @@ class ImageViewer {
     // calculate zoom slider area
     this._state.zoomSliderLength = snapViewWidth - zoomHandle.offsetWidth;
   }
-  resetZoom (animate = true) {
+  resetZoom(animate = true) {
     const { zoomValue } = this._options;
 
     if (!animate) {
@@ -718,7 +721,7 @@ class ImageViewer {
     const { _options, _elements, _state } = this;
     const { zoomValue: curPerc, imageDim, containerDim, zoomSliderLength } = _state;
     const { image, zoomHandle } = _elements;
-    const { maxZoom } = _options;
+    const { maxZoom, hideBeforeZoom } = _options;
 
     perc = Math.round(Math.max(100, perc));
     perc = Math.min(maxZoom, perc);
@@ -778,7 +781,7 @@ class ImageViewer {
         top: `${newTop}px`,
       });
 
-      if (tickZoom <= 110) {
+      if (tickZoom <= 110 && hideBeforeZoom) {
         css(image, {
           opacity: 0,
         });
@@ -858,7 +861,7 @@ class ImageViewer {
     this._calculateDimensions();
     this.resetZoom();
   }
-  load (imageSrc, hiResImageSrc) {
+  load(imageSrc, hiResImageSrc) {
     this._images = {
       imageSrc,
       hiResImageSrc,
@@ -866,7 +869,7 @@ class ImageViewer {
 
     this._loadImages();
   }
-  destroy () {
+  destroy() {
     const { container, domElement } = this._elements;
     // destroy all the sliders
     Object.entries(this._sliders).forEach(([key, slider]) => {

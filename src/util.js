@@ -107,7 +107,9 @@ export function wrap (element, { tag = 'div', className, id, style }) {
   const wrapper = document.createElement(tag);
   if (className) wrapper.className = className;
   if (id) wrapper.id = id;
-  if (style) wrapper.style = style;
+  if (style) {
+    css(wrapper, style);
+  }
   element.parentNode.insertBefore(wrapper, element);
   element.parentNode.removeChild(element);
   wrapper.appendChild(element);
@@ -135,15 +137,16 @@ export function clamp (num, min, max) {
 }
 
 export function assignEvent (element, events, handler) {
+  var functionMap = {};
   if (typeof events === 'string') events = [events];
-
-  events.forEach((event) => {
-    element.addEventListener(event, handler);
+  events.forEach(function (event) {
+    functionMap[event] = handler;
+    element.addEventListener(event.split('.')[0], functionMap[event]);
   });
-
-  return () => {
-    events.forEach((event) => {
-      element.removeEventListener(event, handler);
+  return function () {
+    events.forEach(function (event) {
+      element.removeEventListener(event.split('.')[0], functionMap[event]);
+      delete functionMap[event];
     });
   };
 }
